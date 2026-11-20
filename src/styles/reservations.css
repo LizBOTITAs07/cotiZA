@@ -97,6 +97,11 @@
   font-weight: 750;
 }
 
+.reservations-table td[data-status="liquidada"] {
+  color: #0369a1;
+  font-weight: 750;
+}
+
 .reservations-table td[data-status="cancelada"] {
   color: var(--color-error);
   font-weight: 750;

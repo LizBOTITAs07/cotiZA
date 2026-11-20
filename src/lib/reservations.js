@@ -5,7 +5,7 @@ export const INVENTORY_LIMITS = Object.freeze({ sillas: 120, mesas: 12 });
 export const DECORATION_LIMIT_PER_RESERVATION = 1;
 export const MINIMUM_DEPOSIT_RATE = 0.3;
 
-const ACTIVE_STATUSES = new Set(['pendiente', 'confirmada']);
+const ACTIVE_STATUSES = new Set(['pendiente', 'confirmada', 'liquidada']);
 
 export function getAvailability(reservations, eventDate) {
   const activeForDate = reservations.filter(
@@ -118,13 +118,46 @@ export function recordDeposit(reservations, reservationId, amount) {
     throw new Error('El anticipo no puede ser mayor que el total de la reserva.');
   }
 
+  const isSettled = amountCents === totalCents;
   const updated = {
     ...reservation,
     anticipo: amountCents / 100,
     saldo: (totalCents - amountCents) / 100,
-    estado: 'confirmada',
+    estado: isSettled ? 'liquidada' : 'confirmada',
   };
   return reservations.map((item, itemIndex) => itemIndex === index ? updated : item);
+}
+
+export function recordPayment(reservations, reservationId, amount) {
+  const index = reservations.findIndex((res) => res.id === reservationId);
+  if (index === -1) throw new Error('No se encontró la reserva.');
+
+  const res = reservations[index];
+  if (res.estado !== 'confirmada') {
+    throw new Error('Solo se pueden registrar pagos en reservas confirmadas.');
+  }
+
+  const amountNumber = typeof amount === 'number' ? amount : Number(amount);
+  const amountCents = Math.round(amountNumber * 100);
+  const currentSaldoCents = Math.round(res.saldo * 100);
+
+  if (!Number.isFinite(amountNumber) || amountCents <= 0) {
+    throw new Error('El monto del pago debe ser mayor a cero.');
+  }
+  if (amountCents > currentSaldoCents) {
+    throw new Error(`El pago no puede exceder el saldo pendiente (${formatMoney(res.saldo)}).`);
+  }
+
+  const newAnticipoCents = Math.round(res.anticipo * 100) + amountCents;
+  const newSaldoCents = currentSaldoCents - amountCents;
+
+  const updated = {
+    ...res,
+    anticipo: newAnticipoCents / 100,
+    saldo: newSaldoCents / 100,
+    estado: newSaldoCents === 0 ? 'liquidada' : 'confirmada',
+  };
+  return reservations.map((item, i) => i === index ? updated : item);
 }
 
 export function cancelReservation(reservations, reservationId) {

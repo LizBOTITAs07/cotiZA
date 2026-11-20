@@ -37,6 +37,7 @@ import '../styles/reservations.css';
               <option value="">Todos los estados</option>
               <option value="pendiente">Pendiente</option>
               <option value="confirmada">Confirmada</option>
+              <option value="liquidada">Liquidada</option>
               <option value="cancelada">Cancelada</option>
             </select>
           </div>
@@ -75,7 +76,12 @@ import '../styles/reservations.css';
   const reservationsBody = document.querySelector('#reservations-body');
   const message = document.querySelector('#reservations-message');
   const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
-  const statusLabels = { pendiente: 'Pendiente', confirmada: 'Confirmada', cancelada: 'Cancelada' };
+  const statusLabels = { 
+    pendiente: 'Pendiente', 
+    confirmada: 'Confirmada', 
+    liquidada: 'Liquidada', 
+    cancelada: 'Cancelada' 
+  };
 
   function addTextCell(row, value) {
     const cell = document.createElement('td');
