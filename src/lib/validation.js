@@ -44,6 +44,8 @@ export function validateQuote({ clientName, eventDate, quantities, availability 
     errors.clientName = 'Escribe el nombre del cliente.';
   } else if (name.length > 150) {
     errors.clientName = 'El nombre no puede superar los 150 caracteres.';
+  } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(name)) {
+    errors.clientName = 'El nombre del cliente solo debe contener letras y espacios.';
   }
 
   if (!isValidDateOnly(eventDate)) {

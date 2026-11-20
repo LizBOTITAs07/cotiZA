@@ -47,6 +47,14 @@ if (form instanceof HTMLFormElement) {
       }
 
       nameInput.value = draft.clientName;
+      nameInput.addEventListener('input', (e) => {
+        const input = e.target;
+        if (/[0-9]/.test(input.value)) {
+          input.value = input.value.replace(/[0-9]/g, '');
+          formStatus.textContent = 'El nombre del cliente solo debe contener letras y espacios';
+          formStatus.dataset.tone = 'error';
+        }
+      });
       dateInput.value = draft.eventDate;
       deliveryInput.checked = draft.quantities.entrega === '1';
 

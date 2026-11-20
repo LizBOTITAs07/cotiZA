@@ -43,6 +43,9 @@ export function createReservationRecord(reservations, input, options = {}) {
   if (!clientName || clientName.length > 150) {
     throw new Error('Escribe un nombre de cliente de 1 a 150 caracteres.');
   }
+  if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(clientName)) {
+    throw new Error('El nombre del cliente solo debe contener letras y espacios.');
+  }
   if (!isValidDateOnly(input.eventDate)) {
     throw new Error('Selecciona una fecha válida para el evento.');
   }
