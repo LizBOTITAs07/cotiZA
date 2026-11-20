@@ -1,0 +1,19 @@
+{
+  "name": "vibe-cotizador",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.23.4"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "node --max-old-space-size=512 ./node_modules/astro/bin/astro.mjs build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "test": "node --max-old-space-size=512 --test tests"
+  },
+  "dependencies": {
+    "@astrojs/node": "^11.1.12",
+    "astro": "^7.4.11"
+  }
+}

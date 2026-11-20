@@ -1,0 +1,105 @@
+---
+import type { CatalogService } from '../lib/catalog.js';
+import IconChair from './icons/IconChair.astro';
+import IconTable from './icons/IconTable.astro';
+import IconDecor from './icons/IconDecor.astro';
+import IconTruck from './icons/IconTruck.astro';
+import IconPlus from './icons/IconPlus.astro';
+import IconMinus from './icons/IconMinus.astro';
+
+interface Props {
+  service: CatalogService;
+}
+
+const { service } = Astro.props;
+const iconComponents = {
+  sillas: IconChair,
+  mesas: IconTable,
+  decoracion: IconDecor,
+  entrega: IconTruck,
+};
+const Icon = iconComponents[service.id];
+const isFixed = service.fixedCharge === true;
+---
+
+<article
+  class="service-row"
+  data-service-row={service.id}
+  data-concept={service.concept}
+  data-unit-price={service.unitPrice}
+  data-discountable={service.discountable}
+  data-stock-limit={service.stockLimit ?? ''}
+  data-fixed-charge={isFixed ? 'true' : 'false'}
+>
+  <div class="service-info">
+    <span class="service-icon" aria-hidden="true"><Icon /></span>
+    <div>
+      <span class="service-name">{service.concept}</span>
+      <span class="service-meta">
+        ${service.unitPrice.toFixed(2)} {isFixed ? 'por evento' : `por ${service.unitLabel}`}
+        {service.discountable && <span> · Participa en descuento</span>}
+      </span>
+    </div>
+  </div>
+
+  {isFixed ? (
+    <div class="quantity-area">
+      <label class="delivery-option">
+        <input id="include-delivery" name="entrega" type="checkbox" />
+        <span>
+          <strong>Agregar ${service.unitPrice.toFixed(2)}</strong>
+          <span class="fixed-charge-note">Opcional · se cobra una vez por reserva</span>
+        </span>
+      </label>
+    </div>
+  ) : (
+    <div class="quantity-area">
+      <div class="quantity-control" role="group" aria-label={`Cantidad de ${service.concept}`}>
+        <button
+          class="step-button"
+          type="button"
+          data-step="-1"
+          aria-label={`Quitar una unidad de ${service.concept}`}
+          aria-controls={`quantity-${service.id}`}
+        >
+          <IconMinus />
+        </button>
+        <input
+          class="quantity-input"
+          id={`quantity-${service.id}`}
+          name={`cantidad_${service.id}`}
+          type="number"
+          min="0"
+          max={service.stockLimit ?? service.maxQuantity}
+          step="1"
+          value="0"
+          inputmode="numeric"
+          required
+          aria-label={`Cantidad de ${service.concept}`}
+          aria-describedby={`quantity-${service.id}-hint quantity-${service.id}-error`}
+        />
+        <button
+          class="step-button"
+          type="button"
+          data-step="1"
+          aria-label={`Agregar una unidad de ${service.concept}`}
+          aria-controls={`quantity-${service.id}`}
+        >
+          <IconPlus />
+        </button>
+      </div>
+      <span class="availability-label" id={`quantity-${service.id}-hint`}>
+        {service.stockLimit !== null
+          ? `Máximo por fecha: ${service.stockLimit} ${service.unitLabel}${service.stockLimit === 1 ? '' : 's'}`
+          : `Máximo por reserva: ${service.maxQuantity} ${service.unitLabel}`}
+      </span>
+      <p
+        class="field-error"
+        id={`quantity-${service.id}-error`}
+        data-quantity-error={service.id}
+        aria-live="polite"
+        hidden
+      ></p>
+    </div>
+  )}
+</article>

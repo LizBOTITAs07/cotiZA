@@ -1,0 +1,46 @@
+---
+import IconPrinter from './icons/IconPrinter.astro';
+const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+---
+
+<section class="totals-card" aria-labelledby="totals-heading">
+  <h2 id="totals-heading">Resumen de totales</h2>
+  <p class="totals-caption">Precios claros para que planees tu evento.</p>
+
+  <dl class="totals-list">
+    <div class="total-row">
+      <dt>Subtotal mobiliario y decoración</dt>
+      <dd data-total="subtotal">{currency.format(0)}</dd>
+    </div>
+    <div class="total-row total-row--discount">
+      <dt>Descuento aplicado (10%)</dt>
+      <dd data-total="discount">−{currency.format(0)}</dd>
+    </div>
+    <div class="total-row">
+      <dt>Entrega opcional</dt>
+      <dd data-total="delivery">{currency.format(0)}</dd>
+    </div>
+    <hr class="total-divider" />
+    <div class="total-row total-row--grand">
+      <dt>Total estimado</dt>
+      <dd data-total="grand">{currency.format(0)}</dd>
+    </div>
+  </dl>
+
+  <p class="discount-note" data-discount-note>
+    El 10% de descuento aplica desde $2,000 de mobiliario y decoración. La entrega es opcional y no participa.
+  </p>
+
+  <div class="action-stack">
+    <button class="button button--primary" id="save-quote" type="submit">
+      Guardar reserva
+    </button>
+    <a class="button button--secondary" href="#resumen" id="print-quote" aria-disabled="true" title="Guarda la cotización antes de imprimir">
+      <IconPrinter />
+      Generar comprobante
+    </a>
+    <p class="phase-note">
+      La impresión estará disponible después de guardar la reserva.
+    </p>
+  </div>
+</section>

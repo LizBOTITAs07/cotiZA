@@ -1,0 +1,46 @@
+---
+import IconUser from './icons/IconUser.astro';
+import IconCalendar from './icons/IconCalendar.astro';
+---
+
+<section class="card" aria-labelledby="client-heading">
+  <header class="section-heading">
+    <span class="section-icon" aria-hidden="true"><IconUser /></span>
+    <div>
+      <h2 id="client-heading">Datos del evento</h2>
+      <p>Completa la información del cliente y la fecha para revisar disponibilidad.</p>
+    </div>
+  </header>
+
+  <div class="field-grid">
+    <div class="field">
+      <label for="client-name"><IconUser />Nombre del cliente</label>
+      <input
+        class="field-control"
+        id="client-name"
+        name="nombre_cliente"
+        type="text"
+        autocomplete="name"
+        maxlength="150"
+        placeholder="Ej. María García"
+        required
+        aria-describedby="client-name-error"
+      />
+      <p class="field-error" id="client-name-error" aria-live="polite" hidden></p>
+    </div>
+
+    <div class="field">
+      <label for="event-date"><IconCalendar />Fecha del evento</label>
+      <input
+        class="field-control"
+        id="event-date"
+        name="fecha_evento"
+        type="date"
+        required
+        aria-describedby="event-date-hint event-date-error"
+      />
+      <p class="field-hint" id="event-date-hint">Debe ser hoy o una fecha posterior.</p>
+      <p class="field-error" id="event-date-error" aria-live="polite" hidden></p>
+    </div>
+  </div>
+</section>

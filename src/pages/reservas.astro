@@ -1,0 +1,189 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/reservations.css';
+---
+
+<BaseLayout
+  title="Reservas | MiEvento"
+  description="Consulta, filtra y administra las reservas guardadas en este navegador."
+>
+  <main class="page-main reservations-page">
+    <header class="intro">
+      <div>
+        <p class="eyebrow">MiEvento Reservas</p>
+        <h1>Reservas guardadas</h1>
+        <p class="intro-copy">
+          Este listado y su inventario se guardan solo en este navegador. No se sincronizan con otros dispositivos.
+        </p>
+      </div>
+      <a class="button button--primary" href="/">Nueva reserva</a>
+    </header>
+
+    <section class="card reservations-card" aria-labelledby="reservations-heading">
+      <div class="reservation-filter">
+        <div class="field">
+          <label for="filter-date">Filtrar por fecha del evento</label>
+          <input class="field-control" id="filter-date" type="date" />
+        </div>
+        <button class="button button--secondary" type="button" id="clear-filter">Mostrar todas</button>
+      </div>
+      <p class="form-status" role="status" aria-live="polite" id="reservations-message"></p>
+      <div class="table-wrap">
+        <table class="reservations-table">
+          <caption class="sr-only">Reservas guardadas en este navegador</caption>
+          <thead>
+            <tr>
+              <th scope="col">Folio</th>
+              <th scope="col">Cliente</th>
+              <th scope="col">Evento</th>
+              <th scope="col">Total</th>
+              <th scope="col">Anticipo</th>
+              <th scope="col">Saldo</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="reservations-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<script>
+  import { cancelReservationInStorage, loadReservations, recordDepositInStorage, RESERVATIONS_STORAGE_KEY } from '../lib/reservationsStore.js';
+
+  const dateFilter = document.querySelector('#filter-date');
+  const reservationsBody = document.querySelector('#reservations-body');
+  const message = document.querySelector('#reservations-message');
+  const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+  const statusLabels = { pendiente: 'Pendiente', confirmada: 'Confirmada', cancelada: 'Cancelada' };
+
+  function addTextCell(row, value) {
+    const cell = document.createElement('td');
+    cell.textContent = value;
+    row.append(cell);
+    return cell;
+  }
+
+  function renderReservations() {
+    try {
+      const filterDate = dateFilter.value;
+      const reservations = loadReservations()
+        .filter((reservation) => !filterDate || reservation.fecha === filterDate)
+        .sort((left, right) => left.fecha.localeCompare(right.fecha) || right.creadoEn.localeCompare(left.creadoEn));
+      reservationsBody.replaceChildren();
+
+      for (const reservation of reservations) {
+        const row = document.createElement('tr');
+        addTextCell(row, reservation.id.slice(0, 8).toUpperCase());
+        addTextCell(row, reservation.cliente);
+        addTextCell(row, reservation.fecha);
+        addTextCell(row, currency.format(reservation.total));
+        addTextCell(row, currency.format(reservation.anticipo));
+        addTextCell(row, currency.format(reservation.saldo));
+        const statusCell = addTextCell(row, statusLabels[reservation.estado]);
+        statusCell.dataset.status = reservation.estado;
+
+        const actions = document.createElement('td');
+        actions.className = 'reservation-actions';
+        const receiptLink = document.createElement('a');
+        receiptLink.className = 'button button--quiet';
+        receiptLink.href = `/cotizacion/${encodeURIComponent(reservation.id)}`;
+        receiptLink.textContent = 'Comprobante';
+        actions.append(receiptLink);
+
+        if (reservation.estado === 'pendiente') {
+          const depositButton = document.createElement('button');
+          depositButton.className = 'button button--secondary';
+          depositButton.type = 'button';
+          depositButton.textContent = 'Registrar anticipo';
+          depositButton.dataset.deposit = reservation.id;
+          actions.append(depositButton);
+        }
+        if (reservation.estado !== 'cancelada') {
+          const cancelButton = document.createElement('button');
+          cancelButton.className = 'button button--secondary';
+          cancelButton.type = 'button';
+          cancelButton.textContent = 'Cancelar';
+          cancelButton.dataset.cancel = reservation.id;
+          actions.append(cancelButton);
+        }
+        row.append(actions);
+        reservationsBody.append(row);
+      }
+
+      message.textContent = reservations.length
+        ? `${reservations.length} reserva${reservations.length === 1 ? '' : 's'} en este navegador.`
+        : 'No hay reservas para mostrar.';
+      message.dataset.tone = '';
+    } catch (error) {
+      console.error('[reservas] No se pudieron leer las reservas locales.', {
+        name: error instanceof Error ? error.name : 'UnknownError',
+      });
+      reservationsBody.replaceChildren();
+      message.textContent = error instanceof Error ? error.message : 'No se pudieron leer las reservas locales.';
+      message.dataset.tone = 'error';
+    }
+  }
+
+  document.querySelector('#clear-filter').addEventListener('click', () => {
+    dateFilter.value = '';
+    renderReservations();
+  });
+  dateFilter.addEventListener('change', renderReservations);
+
+  reservationsBody.addEventListener('click', async (event) => {
+    if (!(event.target instanceof Element)) {
+      return;
+    }
+    const depositButton = event.target.closest('[data-deposit]');
+    if (depositButton instanceof HTMLButtonElement) {
+      const reservation = loadReservations().find((item) => item.id === depositButton.dataset.deposit);
+      if (!reservation) {
+        renderReservations();
+        return;
+      }
+      const minimum = (Math.round(reservation.total * 100 * 0.3) / 100).toFixed(2);
+      const amount = window.prompt(`Ingresa un anticipo entre $${minimum} y $${reservation.total.toFixed(2)} MXN. Se acepta una sola vez.`);
+      if (amount === null) {
+        return;
+      }
+      try {
+        await recordDepositInStorage(reservation.id, amount);
+        message.textContent = 'Anticipo registrado. La reserva quedó confirmada.';
+        message.dataset.tone = 'success';
+        renderReservations();
+      } catch (error) {
+        message.textContent = error instanceof Error ? error.message : 'No se pudo registrar el anticipo.';
+        message.dataset.tone = 'error';
+      }
+      return;
+    }
+
+    const cancelButton = event.target.closest('[data-cancel]');
+    if (cancelButton instanceof HTMLButtonElement) {
+      const id = cancelButton.dataset.cancel;
+      if (!window.confirm('¿Cancelar esta reserva? Se conservará como registro histórico y su inventario quedará disponible.')) {
+        return;
+      }
+      try {
+        await cancelReservationInStorage(id);
+        message.textContent = 'Reserva cancelada; el inventario de esa fecha quedó disponible.';
+        message.dataset.tone = 'success';
+        renderReservations();
+      } catch (error) {
+        message.textContent = error instanceof Error ? error.message : 'No se pudo cancelar la reserva.';
+        message.dataset.tone = 'error';
+      }
+    }
+  });
+
+  window.addEventListener('storage', (event) => {
+    if (event.key === RESERVATIONS_STORAGE_KEY) {
+      renderReservations();
+    }
+  });
+
+  renderReservations();
+</script>

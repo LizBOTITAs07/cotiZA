@@ -1,0 +1,171 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import IconDecor from '../../components/icons/IconDecor.astro';
+import IconPrinter from '../../components/icons/IconPrinter.astro';
+import '../../styles/print.css';
+
+const id = Astro.params.id ?? '';
+---
+
+<BaseLayout
+  title="Comprobante | MiEvento"
+  description="Comprobante de una reserva almacenada localmente."
+>
+  <main class="receipt-page">
+    <header class="receipt-toolbar screen-only">
+      <div class="receipt-toolbar-copy">
+        <p class="eyebrow">Comprobante guardado</p>
+        <h1 data-receipt-heading>Reserva</h1>
+        <p>Este comprobante se carga desde las reservas guardadas en este navegador.</p>
+      </div>
+      <div class="receipt-toolbar-actions">
+        <a class="button button--secondary" href="/reservas">Volver a reservas</a>
+        <button class="button button--primary" type="button" data-print>
+          <IconPrinter />
+          Imprimir / Guardar PDF
+        </button>
+      </div>
+    </header>
+
+    <article class="receipt" aria-labelledby="receipt-title" data-receipt hidden>
+      <header class="receipt-header">
+        <div class="receipt-brand">
+          <span class="receipt-brand-mark" aria-hidden="true"><IconDecor /></span>
+          <div>
+            <p class="receipt-brand-name">MIEVENTO</p>
+            <p class="receipt-brand-place">Pachuca · Servicios para eventos</p>
+          </div>
+        </div>
+        <div class="receipt-folio">
+          <p class="receipt-folio-label">Folio de reserva</p>
+          <p class="receipt-folio-number" data-folio></p>
+          <p class="receipt-folio-date" data-created></p>
+        </div>
+      </header>
+
+      <h2 class="receipt-title" id="receipt-title">Comprobante de reserva</h2>
+      <dl class="receipt-meta">
+        <div class="receipt-meta-item"><dt>Cliente</dt><dd data-client></dd></div>
+        <div class="receipt-meta-item"><dt>Fecha del evento</dt><dd data-event-date></dd></div>
+        <div class="receipt-meta-item"><dt>Estado</dt><dd><span class="receipt-status" data-status></span></dd></div>
+        <div class="receipt-meta-item"><dt>Anticipo registrado</dt><dd data-deposit></dd></div>
+        <div class="receipt-meta-item"><dt>Saldo</dt><dd data-balance></dd></div>
+      </dl>
+
+      <div class="receipt-table-wrap">
+        <table class="receipt-table">
+          <caption class="sr-only">Detalle de servicios de la reserva</caption>
+          <thead><tr><th scope="col">Descripción</th><th scope="col">Cantidad</th><th scope="col">Precio unitario</th><th scope="col">Importe</th></tr></thead>
+          <tbody data-items></tbody>
+        </table>
+      </div>
+
+      <dl class="receipt-totals">
+        <div class="receipt-total-row"><dt>Subtotal</dt><dd data-subtotal></dd></div>
+        <div class="receipt-total-row receipt-total-row--discount"><dt>Descuento aplicado (10%)</dt><dd data-discount></dd></div>
+        <div class="receipt-total-row"><dt>Entrega opcional</dt><dd data-delivery></dd></div>
+        <hr class="receipt-total-separator" />
+        <div class="receipt-total-row receipt-total-row--grand"><dt>Total</dt><dd data-total></dd></div>
+      </dl>
+      <p class="receipt-note" data-cancelled-note hidden>
+        Reserva cancelada. El anticipo y el saldo se muestran como registro histórico; no representan una reserva activa ni calculan devoluciones.
+      </p>
+      <p class="receipt-note">
+        Las reservas y el inventario se guardan solo en este navegador y no se sincronizan con otros dispositivos.
+      </p>
+    </article>
+    <section class="receipt-error" role="alert" data-receipt-error hidden>
+      <p class="eyebrow">Comprobante</p>
+      <h1>No se encontró la reserva</h1>
+      <p data-error-message></p>
+      <a class="button button--primary" href="/reservas">Volver a reservas</a>
+    </section>
+  </main>
+</BaseLayout>
+
+<script define:vars={{ reservationId: id }}>
+  import { loadReservations } from '../../lib/reservationsStore.js';
+  import { SERVICE_CATALOG } from '../../lib/catalog.js';
+
+  const receipt = document.querySelector('[data-receipt]');
+  const receiptError = document.querySelector('[data-receipt-error]');
+  const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+  const dateFormatter = new Intl.DateTimeFormat('es-MX', { dateStyle: 'long', timeZone: 'UTC' });
+  const statusLabels = { pendiente: 'Pendiente', confirmada: 'Confirmada', cancelada: 'Cancelada' };
+
+  function showError(text) {
+    receiptError.hidden = false;
+    receiptError.querySelector('[data-error-message]').textContent = text;
+  }
+
+  try {
+    const reservation = loadReservations().find((item) => item.id === reservationId);
+    if (!reservation) {
+      showError('La reserva no existe en el almacenamiento local de este navegador.');
+    } else {
+      const dateLabel = (value) => dateFormatter.format(new Date(`${value}T00:00:00Z`));
+      const setText = (selector, value) => { receipt.querySelector(selector).textContent = value; };
+      document.querySelector('[data-receipt-heading]').textContent = `Reserva ${reservation.id.slice(0, 8).toUpperCase()}`;
+      setText('[data-folio]', reservation.id.slice(0, 8).toUpperCase());
+      setText('[data-created]', `Registrada el ${dateLabel(reservation.creadoEn.slice(0, 10))}`);
+      setText('[data-client]', reservation.cliente);
+      setText('[data-event-date]', dateLabel(reservation.fecha));
+      const status = receipt.querySelector('[data-status]');
+      status.textContent = statusLabels[reservation.estado];
+      status.dataset.status = reservation.estado;
+      setText('[data-deposit]', currency.format(reservation.anticipo));
+      setText('[data-balance]', currency.format(reservation.saldo));
+      setText('[data-subtotal]', currency.format(reservation.subtotal));
+      setText('[data-discount]', `−${currency.format(reservation.descuento)}`);
+      setText('[data-delivery]', currency.format(reservation.entrega ? 250 : 0));
+      setText('[data-total]', currency.format(reservation.total));
+      receipt.querySelector('[data-cancelled-note]').hidden = reservation.estado !== 'cancelada';
+
+      const quantities = {
+        sillas: reservation.sillas,
+        mesas: reservation.mesas,
+        decoracion: reservation.decoracion,
+        entrega: reservation.entrega ? 1 : 0,
+      };
+      const items = receipt.querySelector('[data-items]');
+      for (const service of SERVICE_CATALOG) {
+        const quantity = quantities[service.id];
+        if (!quantity) {
+          continue;
+        }
+        const row = document.createElement('tr');
+        for (const value of [
+          service.concept,
+          String(quantity),
+          currency.format(service.unitPrice),
+          currency.format(service.unitPrice * quantity),
+        ]) {
+          const cell = document.createElement('td');
+          cell.textContent = value;
+          row.append(cell);
+        }
+        items.append(row);
+      }
+      receipt.hidden = false;
+    }
+  } catch (error) {
+    console.error('[comprobante] No se pudo leer la reserva local.', {
+      name: error instanceof Error ? error.name : 'UnknownError',
+    });
+    showError(error instanceof Error ? error.message : 'No se pudo leer la reserva local.');
+  }
+
+  document.querySelector('[data-print]').addEventListener('click', () => window.print());
+</script>
+
+<style>
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+  }
+</style>

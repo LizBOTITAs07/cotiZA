@@ -1,0 +1,44 @@
+---
+import '../styles/global.css';
+import IconDecor from '../components/icons/IconDecor.astro';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#1e3a8a" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Vibe Pachuca, inicio">
+          <span class="brand-mark"><IconDecor /></span>
+          <span>
+            <span class="brand-name">VIBE</span>
+            <span class="brand-place">Pachuca · Eventos</span>
+          </span>
+        </a>
+        <nav class="topbar-actions" aria-label="Acciones principales">
+          <a class="button button--primary" href="#cotizador">Nueva cotización</a>
+          <a class="button button--secondary" href="/reservas">Ver reservas</a>
+        </nav>
+      </header>
+      <slot />
+      <footer class="site-footer">
+        <strong>Vibe Pachuca</strong> · Cotiza {new Date().getFullYear()}
+      </footer>
+    </div>
+  </body>
+</html>
