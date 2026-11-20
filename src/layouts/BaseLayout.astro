@@ -1,13 +1,14 @@
 ---
 import '../styles/global.css';
-import IconDecor from '../components/icons/IconDecor.astro';
+import IconHome from '../components/icons/IconHome.astro';
 
 interface Props {
   title: string;
   description: string;
+  showBackButton?: boolean;
 }
 
-const { title, description } = Astro.props;
+const { title, description, showBackButton = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -17,27 +18,94 @@ const { title, description } = Astro.props;
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#1e3a8a" />
+    <meta name="theme-color" content="#0A2540" />
+    <style is:global>
+      :root {
+        --color-primary: #0A2540;
+        --color-accent: #F59E0B;
+        --color-bg: #F8FAFC;
+        --color-text: #1E293B;
+        --font-system: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      body {
+        font-family: var(--font-system);
+        background-color: var(--color-bg);
+        color: var(--color-text);
+        margin: 0;
+      }
+      .app-shell {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+      .topbar {
+        background: var(--color-primary);
+        color: white;
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        color: white;
+        font-weight: bold;
+        font-size: 1.25rem;
+      }
+      .topbar-actions a {
+        color: white;
+        text-decoration: none;
+      }
+      .site-footer {
+        margin-top: auto;
+        padding: 2rem;
+        background: white;
+        text-align: center;
+        border-top: 1px solid #e2e8f0;
+      }
+      .footer-brand {
+        display: block;
+        font-weight: bold;
+        letter-spacing: 0.05em;
+      }
+      .footer-home {
+        float: right;
+        color: var(--color-primary);
+      }
+    </style>
     <title>{title}</title>
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
-        <a class="brand" href="/" aria-label="Vibe Pachuca, inicio">
-          <span class="brand-mark"><IconDecor /></span>
-          <span>
-            <span class="brand-name">VIBE</span>
-            <span class="brand-place">Pachuca · Eventos</span>
-          </span>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          {showBackButton && (
+            <a href="/" class="button-back" style="display: flex; align-items: center; gap: 0.25rem; color: white; text-decoration: none;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+              Regresar
+            </a>
+          )}
+          <a class="brand" href="/" aria-label="Cotiza inicio">
+            <span>Cotiza</span>
+          </a>
+        </div>
+        <a href="/" class="topbar-actions" aria-label="Inicio">
+          <IconHome size={24} />
         </a>
-        <nav class="topbar-actions" aria-label="Acciones principales">
-          <a class="button button--primary" href="#cotizador">Nueva cotización</a>
-          <a class="button button--secondary" href="/reservas">Ver reservas</a>
-        </nav>
       </header>
       <slot />
       <footer class="site-footer">
-        <strong>Vibe Pachuca</strong> · Cotiza {new Date().getFullYear()}
+        <span class="footer-brand">COTIZA</span>
+        <span>{new Date().getFullYear()}</span>
+        <a href="/" class="footer-home" aria-label="Inicio">
+          <IconHome size={20} />
+        </a>
       </footer>
     </div>
   </body>
