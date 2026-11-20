@@ -20,12 +20,28 @@ import '../styles/reservations.css';
     </header>
 
     <section class="card reservations-card" aria-labelledby="reservations-heading">
-      <div class="reservation-filter">
-        <div class="field">
-          <label for="filter-date">Filtrar por fecha del evento</label>
-          <input class="field-control" id="filter-date" type="date" />
+      <div class="reservation-toolbar">
+        <div class="search-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-search"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="search-name" placeholder="Buscar por cliente..." class="field-control" />
         </div>
-        <button class="button button--secondary" type="button" id="clear-filter">Mostrar todas</button>
+        <div class="filters-group">
+          <span class="filter-label">Filtrar:</span>
+          <div class="field">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-field"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <input class="field-control" id="filter-date" type="date" />
+          </div>
+          <div class="field">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-field"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+            <select class="field-control" id="filter-status">
+              <option value="">Todos los estados</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="confirmada">Confirmada</option>
+              <option value="cancelada">Cancelada</option>
+            </select>
+          </div>
+          <button class="button button--secondary" type="button" id="clear-filter">Limpiar</button>
+        </div>
       </div>
       <p class="form-status" role="status" aria-live="polite" id="reservations-message"></p>
       <div class="table-wrap">
@@ -54,6 +70,8 @@ import '../styles/reservations.css';
   import { cancelReservationInStorage, loadReservations, recordDepositInStorage, RESERVATIONS_STORAGE_KEY } from '../lib/reservationsStore.js';
 
   const dateFilter = document.querySelector('#filter-date');
+  const statusFilter = document.querySelector('#filter-status');
+  const nameSearch = document.querySelector('#search-name');
   const reservationsBody = document.querySelector('#reservations-body');
   const message = document.querySelector('#reservations-message');
   const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
@@ -69,8 +87,16 @@ import '../styles/reservations.css';
   function renderReservations() {
     try {
       const filterDate = dateFilter.value;
+      const filterStatus = statusFilter.value;
+      const searchTerm = nameSearch.value.toLowerCase();
+
       const reservations = loadReservations()
-        .filter((reservation) => !filterDate || reservation.fecha === filterDate)
+        .filter((res) => {
+          const matchDate = !filterDate || res.fecha === filterDate;
+          const matchStatus = !filterStatus || res.estado === filterStatus;
+          const matchName = !searchTerm || res.cliente.toLowerCase().includes(searchTerm);
+          return matchDate && matchStatus && matchName;
+        })
         .sort((left, right) => left.fecha.localeCompare(right.fecha) || right.creadoEn.localeCompare(left.creadoEn));
       reservationsBody.replaceChildren();
 
@@ -129,9 +155,13 @@ import '../styles/reservations.css';
 
   document.querySelector('#clear-filter').addEventListener('click', () => {
     dateFilter.value = '';
+    statusFilter.value = '';
+    nameSearch.value = '';
     renderReservations();
   });
   dateFilter.addEventListener('change', renderReservations);
+  statusFilter.addEventListener('change', renderReservations);
+  nameSearch.addEventListener('input', renderReservations);
 
   reservationsBody.addEventListener('click', async (event) => {
     if (!(event.target instanceof Element)) {

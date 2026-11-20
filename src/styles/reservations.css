@@ -6,16 +6,65 @@
   padding: clamp(1rem, 3vw, 1.5rem);
 }
 
-.reservation-filter {
+.reservation-toolbar {
   display: flex;
-  align-items: end;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
 }
 
-.reservation-filter .field {
-  width: min(100%, 20rem);
+.search-box {
+  position: relative;
+  flex: 1;
+  min-width: 250px;
+}
+
+.icon-search {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.search-box .field-control {
+  padding-left: 2.5rem;
+  width: 100%;
+}
+
+.filters-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.filter-label {
+  font-weight: bold;
+  color: var(--color-primary);
+  font-size: 0.9rem;
+}
+
+.filters-group .field {
+  position: relative;
+  width: auto;
+}
+
+.icon-field {
+  position: absolute;
+  left: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-primary);
+  pointer-events: none;
+}
+
+.filters-group .field-control {
+  padding-left: 2.2rem;
+  height: 38px;
 }
 
 .reservations-table {
