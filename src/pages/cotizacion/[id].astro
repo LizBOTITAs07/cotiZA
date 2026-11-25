@@ -91,7 +91,7 @@ const id = Astro.params.id ?? '';
   const receiptError = document.querySelector('[data-receipt-error]');
   const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
   const dateFormatter = new Intl.DateTimeFormat('es-MX', { dateStyle: 'long', timeZone: 'UTC' });
-  const statusLabels = { pendiente: 'Pendiente', confirmada: 'Confirmada', cancelada: 'Cancelada' };
+  const statusLabels = { pendiente: 'Pendiente', confirmada: 'Confirmada', liquidada: 'Liquidada', cancelada: 'Cancelada' };
 
   function showError(text) {
     receiptError.hidden = false;
@@ -111,7 +111,7 @@ const id = Astro.params.id ?? '';
       setText('[data-client]', reservation.cliente);
       setText('[data-event-date]', dateLabel(reservation.fecha));
       const status = receipt.querySelector('[data-status]');
-      status.textContent = statusLabels[reservation.estado];
+      status.textContent = statusLabels[reservation.estado] ?? reservation.estado;
       status.dataset.status = reservation.estado;
       setText('[data-deposit]', currency.format(reservation.anticipo));
       setText('[data-balance]', currency.format(reservation.saldo));
@@ -167,5 +167,43 @@ const id = Astro.params.id ?? '';
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     clip-path: inset(50%);
+  }
+
+  .receipt-status {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: capitalize;
+    background-color: var(--color-surface-variant, #f0f0f0);
+    color: var(--color-on-surface, #333);
+  }
+
+  .receipt-status[data-status="pendiente"] {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+
+  .receipt-status[data-status="confirmada"] {
+    background-color: #dbeafe;
+    color: #1e40af;
+  }
+
+  .receipt-status[data-status="liquidada"] {
+    background-color: #dcfce7;
+    color: #166534;
+  }
+
+  .receipt-status[data-status="cancelada"] {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+
+  @media print {
+    .receipt-status {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
   }
 </style>

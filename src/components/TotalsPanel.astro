@@ -1,5 +1,4 @@
 ---
-import IconPrinter from './icons/IconPrinter.astro';
 const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
 ---
 
@@ -35,12 +34,5 @@ const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: '
     <button class="button button--primary" id="save-quote" type="submit">
       Guardar reserva
     </button>
-    <a class="button button--secondary" href="#resumen" id="print-quote" aria-disabled="true" title="Guarda la cotización antes de imprimir">
-      <IconPrinter />
-      Generar comprobante
-    </a>
-    <p class="phase-note">
-      La impresión estará disponible después de guardar la reserva.
-    </p>
   </div>
 </section>

@@ -14,7 +14,6 @@ if (form instanceof HTMLFormElement) {
   const formStatus = form.querySelector('#form-status');
   const inventoryStatus = form.querySelector('#inventory-status');
   const saveButton = form.querySelector('#save-quote');
-  const printLink = form.querySelector('#print-quote');
   const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
   const editableServices = SERVICE_CATALOG.filter((service) => !service.fixedCharge);
   const availability = Object.fromEntries(
@@ -341,13 +340,6 @@ if (form instanceof HTMLFormElement) {
       saveButton.removeAttribute('aria-busy');
       refreshInventory();
     }
-  });
-
-  printLink?.addEventListener('click', (event) => {
-    event.preventDefault();
-    formStatus.textContent = 'Primero guarda la reserva para generar su comprobante.';
-    formStatus.dataset.tone = 'error';
-    saveButton.focus();
   });
 
   window.addEventListener('storage', (event) => {
