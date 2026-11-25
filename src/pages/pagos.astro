@@ -1,0 +1,97 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/reservations.css';
+---
+
+<BaseLayout title="Mis pagos | Cotiza Vibe" description="Consulta el libro de pagos y cancelaciones." showBackButton>
+  <main class="page-main reservations-page">
+    <header class="intro">
+      <div><p class="eyebrow">Mis pagos</p><h1>Movimientos financieros</h1></div>
+    </header>
+    <section class="card">
+      <div class="reservation-toolbar">
+        <div class="search-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-search"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input id="payments-search" class="field-control" type="search" placeholder="Buscar por cliente o folio">
+        </div>
+        <div class="filters-group">
+          <div class="field">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-field"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <input id="payments-date" class="field-control" type="date" aria-label="Filtrar por fecha del evento">
+          </div>
+        </div>
+      </div>
+      <div class="payments-metrics">
+        <article class="metric-card"><span>Total ganado</span><strong id="payments-total">$0.00</strong></article>
+        <article class="metric-card"><span>Stock disponible</span><strong id="stock-summary">Selecciona una fecha</strong></article>
+      </div>
+      <div class="table-wrap">
+        <table class="reservations-table">
+          <thead><tr><th>Transacción</th><th>Folio</th><th>Cliente</th><th>Fecha pago</th><th>Método</th><th>Importe</th><th>Saldo</th></tr></thead>
+          <tbody id="payments-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<script>
+  import { loadPayments, loadReservations, PAYMENTS_STORAGE_KEY } from '../lib/reservationsStore.js';
+  import { getAvailability } from '../lib/reservations.js';
+
+  const body = document.querySelector('#payments-body');
+  const search = document.querySelector('#payments-search');
+  const date = document.querySelector('#payments-date');
+  const total = document.querySelector('#payments-total');
+  const stock = document.querySelector('#stock-summary');
+  const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+
+  function render() {
+    const term = search.value.trim().toLowerCase();
+    const allPayments = loadPayments();
+    const reservations = loadReservations();
+    const filtered = allPayments.filter((payment) =>
+      (!term || `${payment.cliente} ${payment.reservaCodigo}`.toLowerCase().includes(term))
+      && (!date.value || payment.fechaEvento === date.value),
+    );
+    body.replaceChildren();
+    for (const payment of filtered) {
+      const row = document.createElement('tr');
+      for (const value of [
+        payment.id.slice(0, 8).toUpperCase(),
+        payment.reservaCodigo,
+        payment.cliente,
+        new Intl.DateTimeFormat('es-MX', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(payment.fecha)),
+        payment.metodo,
+        currency.format(payment.monto),
+        currency.format(payment.saldo),
+      ]) {
+        const cell = document.createElement('td');
+        cell.textContent = value;
+        if (typeof value === 'string' && value.startsWith('-')) cell.style.color = '#b42318';
+        row.append(cell);
+      }
+      body.append(row);
+    }
+    total.textContent = currency.format(filtered.reduce((sum, payment) => sum + payment.monto, 0));
+    if (date.value) {
+      const availability = getAvailability(reservations, date.value);
+      stock.textContent = `Sillas: ${availability.sillas}/120 · Mesas: ${availability.mesas}/12`;
+    } else {
+      stock.textContent = 'Selecciona una fecha';
+    }
+  }
+  search.addEventListener('input', render);
+  date.addEventListener('change', render);
+  window.addEventListener('storage', (event) => {
+    if (event.key === PAYMENTS_STORAGE_KEY || event.key === 'miev-evento-reservas-v1') render();
+  });
+  render();
+</script>
+
+<style>
+  .payments-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+  .metric-card { padding: 1rem; color: #fff; background: #0A2540; border-bottom: 5px solid #FACC15; border-radius: 12px; }
+  .metric-card span { display: block; font-size: .82rem; } .metric-card strong { display: block; margin-top:.35rem; font-size:1.25rem; }
+  @media (max-width:640px) { .payments-metrics { grid-template-columns: 1fr; } }
+</style>

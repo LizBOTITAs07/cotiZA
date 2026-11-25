@@ -5,6 +5,8 @@ import {
   createReservationRecord,
   getAvailability,
   recordDeposit,
+  recordPayment,
+  updateReservation,
 } from '../src/lib/reservations.js';
 import {
   createReservationInStorage,
@@ -98,4 +100,37 @@ test('P7: persiste el arreglo bajo una clave nueva y lo restaura', async () => {
   assert.equal(restored.length, 1);
   assert.equal(restored[0].cliente, 'Ana');
   assert.equal(restored[0].estado, 'pendiente');
+});
+
+test('T2-T3: edición segura excluye el propio folio y rechaza faltantes de stock', () => {
+  const ana = create([], 'Ana', DATE_F, { sillas: 100, mesas: 5, decoracion: 0, entrega: true }, 'ana');
+  const beto = create([ana], 'Beto', DATE_G, { sillas: 30, mesas: 0, decoracion: 0 }, 'beto');
+  assert.throws(
+    () => updateReservation([ana, beto], 'ana', {
+      clientName: 'Ana',
+      eventDate: DATE_G,
+      quantities: { sillas: 100, mesas: 5, decoracion: 0, entrega: true },
+    }),
+    /stock/i,
+  );
+  const withoutAna = [beto];
+  const updated = updateReservation(withoutAna, 'beto', {
+    clientName: 'Beto',
+    eventDate: DATE_F,
+    quantities: { sillas: 30, mesas: 0, decoracion: 0, entrega: false },
+  });
+  assert.equal(updated.find((item) => item.id === 'beto').fecha, DATE_F);
+});
+
+test('T4-T6: abonos parciales y liquidación cierran la cuenta', () => {
+  const ana = create([], 'Ana', DATE_F, { sillas: 100, mesas: 5, decoracion: 0, entrega: true }, 'ana');
+  const confirmed = recordDeposit([ana], 'ana', 642);
+  assert.throws(() => recordPayment(confirmed, 'ana', 0), /mayor a cero/i);
+  assert.throws(() => recordPayment(confirmed, 'ana', -1), /mayor a cero/i);
+  assert.throws(() => recordPayment(confirmed, 'ana', 1498.01), /exceder/i);
+  const partial = recordPayment(confirmed, 'ana', 500)[0];
+  assert.deepEqual([partial.anticipo, partial.saldo, partial.estado], [1142, 998, 'confirmada']);
+  const settled = recordPayment([partial], 'ana', 998)[0];
+  assert.deepEqual([settled.anticipo, settled.saldo, settled.estado], [2140, 0, 'liquidada']);
+  assert.throws(() => recordPayment([settled], 'ana', 1), /Solo se pueden registrar pagos/i);
 });

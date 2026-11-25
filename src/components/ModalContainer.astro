@@ -1,0 +1,47 @@
+<dialog class="modal-container" id="app-modal">
+  <div class="modal-card">
+    <header class="modal-header">
+      <h2 data-modal-title>Información</h2>
+      <button type="button" class="modal-close" data-modal-close aria-label="Cerrar">×</button>
+    </header>
+    <div class="modal-body" data-modal-body></div>
+  </div>
+</dialog>
+
+<style>
+  .modal-container {
+    width: min(92vw, 560px);
+    padding: 0;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+  }
+  .modal-container::backdrop {
+    background: rgb(10 37 64 / 55%);
+  }
+  .modal-card {
+    overflow: hidden;
+    border: 2px solid #0A2540;
+    border-radius: 14px;
+    background: #fff;
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    color: #fff;
+    background: #0A2540;
+  }
+  .modal-header h2 { margin: 0; font-size: 1.1rem; }
+  .modal-close {
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 8px;
+    color: #1E293B;
+    background: #FACC15;
+    cursor: pointer;
+  }
+  .modal-body { padding: 1.25rem; }
+</style>

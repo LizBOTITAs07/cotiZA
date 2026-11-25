@@ -96,6 +96,70 @@ export function createReservationRecord(reservations, input, options = {}) {
   };
 }
 
+export function updateReservation(reservations, reservationId, input) {
+  const index = reservations.findIndex((reservation) => reservation.id === reservationId);
+  if (index === -1) {
+    throw new Error('No se encontró la reserva.');
+  }
+
+  const current = reservations[index];
+  if (!ACTIVE_STATUSES.has(current.estado) || current.estado === 'liquidada') {
+    throw new Error('La reserva cancelada o liquidada no puede editarse.');
+  }
+  if (typeof input.clientName !== 'string' || !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(input.clientName.trim())) {
+    throw new Error('El nombre del cliente solo debe contener letras y espacios.');
+  }
+  if (!isValidDateOnly(input.eventDate) || input.eventDate < getLocalDateString()) {
+    throw new Error('Selecciona una fecha válida para el evento.');
+  }
+
+  const chairs = parseQuantity(input.quantities.sillas, 'sillas', 'Sillas', INVENTORY_LIMITS.sillas);
+  const tables = parseQuantity(input.quantities.mesas, 'mesas', 'Mesas', INVENTORY_LIMITS.mesas);
+  const decoration = parseQuantity(
+    input.quantities.decoracion,
+    'decoracion',
+    'Decoración',
+    DECORATION_LIMIT_PER_RESERVATION,
+  );
+  if (chairs === 0 && tables === 0) {
+    throw new Error('La reserva debe incluir al menos una silla o una mesa.');
+  }
+
+  const withoutCurrent = reservations.filter((reservation) => reservation.id !== reservationId);
+  const availability = getAvailability(withoutCurrent, input.eventDate);
+  if (chairs > availability.sillas || tables > availability.mesas) {
+    throw new Error('El saldo / stock no es válido para editar esta reserva');
+  }
+
+  const quote = calculateQuote({
+    sillas: chairs,
+    mesas: tables,
+    decoracion: decoration,
+    entrega: input.quantities.entrega ? 1 : 0,
+  });
+  const paidCents = Math.round(current.anticipo * 100);
+  const totalCents = Math.round(quote.total * 100);
+  if (paidCents > totalCents) {
+    throw new Error('El saldo / stock no es válido para editar esta reserva');
+  }
+
+  const updated = {
+    ...current,
+    cliente: input.clientName.trim(),
+    fecha: input.eventDate,
+    sillas: chairs,
+    mesas: tables,
+    decoracion: decoration,
+    entrega: input.quantities.entrega === true,
+    subtotal: quote.subtotal,
+    descuento: quote.discount,
+    total: quote.total,
+    saldo: (totalCents - paidCents) / 100,
+    estado: totalCents === paidCents ? 'liquidada' : current.estado,
+  };
+  return reservations.map((reservation, itemIndex) => itemIndex === index ? updated : reservation);
+}
+
 export function recordDeposit(reservations, reservationId, amount) {
   const index = reservations.findIndex((reservation) => reservation.id === reservationId);
   if (index === -1) {

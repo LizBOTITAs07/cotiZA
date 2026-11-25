@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import ModalContainer from '../components/ModalContainer.astro';
 import '../styles/reservations.css';
 ---
 
@@ -16,7 +17,7 @@ import '../styles/reservations.css';
           Este listado y su inventario se guardan solo en este navegador. No se sincronizan con otros dispositivos.
         </p>
       </div>
-      <a class="button button--primary" href="/">Nueva reserva</a>
+      <a class="button button--primary" href="/nueva-reserva">Nueva reserva</a>
     </header>
 
     <section class="card reservations-card" aria-labelledby="reservations-heading">
@@ -65,10 +66,18 @@ import '../styles/reservations.css';
       </div>
     </section>
   </main>
+  <ModalContainer />
 </BaseLayout>
 
 <script>
-  import { cancelReservationInStorage, loadReservations, recordDepositInStorage, RESERVATIONS_STORAGE_KEY } from '../lib/reservationsStore.js';
+  import {
+    cancelReservationInStorage,
+    loadReservations,
+    recordDepositInStorage,
+    recordPaymentInStorage,
+    updateReservationInStorage,
+    RESERVATIONS_STORAGE_KEY,
+  } from '../lib/reservationsStore.js';
 
   const dateFilter = document.querySelector('#filter-date');
   const statusFilter = document.querySelector('#filter-status');
@@ -82,6 +91,24 @@ import '../styles/reservations.css';
     liquidada: 'Liquidada', 
     cancelada: 'Cancelada' 
   };
+
+  const modal = document.querySelector('#app-modal');
+
+  function openModal(title, body) {
+    modal.querySelector('[data-modal-title]').textContent = title;
+    const host = modal.querySelector('[data-modal-body]');
+    host.replaceChildren();
+    if (typeof body === 'string') {
+      const p = document.createElement('p');
+      p.textContent = body;
+      host.append(p);
+    } else {
+      host.append(body);
+    }
+    modal.showModal();
+  }
+
+  modal.querySelector('[data-modal-close]').addEventListener('click', () => modal.close());
 
   function addTextCell(row, value) {
     const cell = document.createElement('td');
@@ -133,6 +160,22 @@ import '../styles/reservations.css';
           depositButton.dataset.deposit = reservation.id;
           actions.append(depositButton);
         }
+        if (reservation.estado === 'confirmada') {
+          const paymentButton = document.createElement('button');
+          paymentButton.className = 'button button--secondary';
+          paymentButton.type = 'button';
+          paymentButton.textContent = 'Registrar abono';
+          paymentButton.dataset.payment = reservation.id;
+          actions.append(paymentButton);
+        }
+        if (reservation.estado !== 'cancelada' && reservation.estado !== 'liquidada') {
+          const editButton = document.createElement('button');
+          editButton.className = 'button button--quiet';
+          editButton.type = 'button';
+          editButton.textContent = 'Editar';
+          editButton.dataset.edit = reservation.id;
+          actions.append(editButton);
+        }
         if (reservation.estado !== 'cancelada') {
           const cancelButton = document.createElement('button');
           cancelButton.className = 'button button--secondary';
@@ -180,38 +223,95 @@ import '../styles/reservations.css';
         renderReservations();
         return;
       }
-      const minimum = (Math.round(reservation.total * 100 * 0.3) / 100).toFixed(2);
-      const amount = window.prompt(`Ingresa un anticipo entre $${minimum} y $${reservation.total.toFixed(2)} MXN. Se acepta una sola vez.`);
-      if (amount === null) {
-        return;
-      }
-      try {
-        await recordDepositInStorage(reservation.id, amount);
-        message.textContent = 'Anticipo registrado. La reserva quedó confirmada.';
-        message.dataset.tone = 'success';
-        renderReservations();
-      } catch (error) {
-        message.textContent = error instanceof Error ? error.message : 'No se pudo registrar el anticipo.';
-        message.dataset.tone = 'error';
-      }
+      const minimum = (Math.ceil(reservation.total * 100 * 0.3) / 100).toFixed(2);
+      const form = document.createElement('form');
+      form.innerHTML = `<label>Monto del anticipo (mínimo ${minimum} MXN)<input id="deposit-modal-input" class="field-control" type="number" min="${minimum}" max="${reservation.total}" step="0.01" required></label><button class="button button--primary" type="submit">Registrar</button>`;
+      openModal('Registrar anticipo', form);
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try {
+          await recordDepositInStorage(reservation.id, form.querySelector('#deposit-modal-input').value);
+          modal.close();
+          openModal('Anticipo registrado', 'La reserva quedó confirmada.');
+          renderReservations();
+        } catch (error) {
+          openModal('Datos inválidos', error instanceof Error ? error.message : 'No se pudo registrar el anticipo.');
+        }
+      });
+      return;
+    }
+
+    const paymentButton = event.target.closest('[data-payment]');
+    if (paymentButton instanceof HTMLButtonElement) {
+      const reservation = loadReservations().find((item) => item.id === paymentButton.dataset.payment);
+      if (!reservation) return;
+      const form = document.createElement('form');
+      form.innerHTML = `<label>Monto del abono<input id="payment-modal-input" class="field-control" type="number" min="0.01" max="${reservation.saldo}" step="0.01" required></label><label>Método<select id="payment-modal-method" class="field-control"><option>Efectivo</option><option>Transferencia</option></select></label><button class="button button--primary" type="submit">Registrar abono</button>`;
+      openModal('Registrar abono', form);
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try {
+          await recordPaymentInStorage(
+            reservation.id,
+            form.querySelector('#payment-modal-input').value,
+            form.querySelector('#payment-modal-method').value,
+          );
+          modal.close();
+          openModal('Abono registrado', 'El saldo de la reserva fue actualizado.');
+          renderReservations();
+        } catch (error) {
+          openModal('Pago inválido', error instanceof Error ? error.message : 'No se pudo registrar el abono.');
+        }
+      });
+      return;
+    }
+
+    const editButton = event.target.closest('[data-edit]');
+    if (editButton instanceof HTMLButtonElement) {
+      const reservation = loadReservations().find((item) => item.id === editButton.dataset.edit);
+      if (!reservation) return;
+      const form = document.createElement('form');
+      form.innerHTML = `<div class="field-grid"><label>Nombre<input id="edit-name" class="field-control" value="${reservation.cliente.replace(/"/g, '&quot;')}" pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+" required></label><label>Fecha<input id="edit-date" class="field-control" type="date" value="${reservation.fecha}" required></label><label>Sillas<input id="edit-chairs" class="field-control" type="number" min="0" max="120" value="${reservation.sillas}" required></label><label>Mesas<input id="edit-tables" class="field-control" type="number" min="0" max="12" value="${reservation.mesas}" required></label><label>Decoración<input id="edit-decoration" class="field-control" type="number" min="0" max="1" value="${reservation.decoracion}" required></label><label>Entrega<input id="edit-delivery" type="checkbox" ${reservation.entrega ? 'checked' : ''}></label></div><button class="button button--primary" type="submit">Guardar cambios</button>`;
+      openModal(`Editar reserva ${reservation.id.slice(0, 8).toUpperCase()}`, form);
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try {
+          await updateReservationInStorage(reservation.id, {
+            clientName: form.querySelector('#edit-name').value,
+            eventDate: form.querySelector('#edit-date').value,
+            quantities: {
+              sillas: Number(form.querySelector('#edit-chairs').value),
+              mesas: Number(form.querySelector('#edit-tables').value),
+              decoracion: Number(form.querySelector('#edit-decoration').value),
+              entrega: form.querySelector('#edit-delivery').checked,
+            },
+          });
+          modal.close();
+          openModal('Reserva actualizada', 'Los datos y los totales fueron recalculados.');
+          renderReservations();
+        } catch (error) {
+          openModal('El saldo / stock no es válido', error instanceof Error ? error.message : 'El saldo / stock no es válido para editar esta reserva');
+        }
+      });
       return;
     }
 
     const cancelButton = event.target.closest('[data-cancel]');
     if (cancelButton instanceof HTMLButtonElement) {
       const id = cancelButton.dataset.cancel;
-      if (!window.confirm('¿Cancelar esta reserva? Se conservará como registro histórico y su inventario quedará disponible.')) {
-        return;
-      }
-      try {
-        await cancelReservationInStorage(id);
-        message.textContent = 'Reserva cancelada; el inventario de esa fecha quedó disponible.';
-        message.dataset.tone = 'success';
-        renderReservations();
-      } catch (error) {
-        message.textContent = error instanceof Error ? error.message : 'No se pudo cancelar la reserva.';
-        message.dataset.tone = 'error';
-      }
+      const form = document.createElement('div');
+      form.innerHTML = '<p>¿Cancelar esta reserva? Se conservará como registro histórico y su inventario quedará disponible.</p><button class="button button--primary" type="button" data-confirm-cancel>Confirmar cancelación</button>';
+      openModal('Cancelar reserva', form);
+      form.querySelector('[data-confirm-cancel]').addEventListener('click', async () => {
+        try {
+          await cancelReservationInStorage(id);
+          modal.close();
+          openModal('Reserva cancelada', 'El inventario de esa fecha quedó disponible.');
+          renderReservations();
+        } catch (error) {
+          openModal('Cancelación no disponible', error instanceof Error ? error.message : 'No se pudo cancelar la reserva.');
+        }
+      });
     }
   });
 

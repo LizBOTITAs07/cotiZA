@@ -1,0 +1,58 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ClientForm from '../components/ClientForm.astro';
+import ServiceSelector from '../components/ServiceSelector.astro';
+import QuoteSummaryTable from '../components/QuoteSummaryTable.astro';
+import TotalsPanel from '../components/TotalsPanel.astro';
+import ModalContainer from '../components/ModalContainer.astro';
+import { SERVICE_CATALOG } from '../lib/catalog.js';
+---
+
+<BaseLayout title="Nueva reserva | Cotiza Vibe" description="Crea una cotización y reserva un evento." showBackButton>
+  <main class="page-main">
+    <form id="quote-form" class="quote-form" novalidate>
+      <div class="content-grid">
+        <div class="main-column">
+          <ClientForm />
+          <section class="card" aria-labelledby="products-heading">
+            <header class="section-heading">
+              <div><h2 id="products-heading">Productos</h2></div>
+            </header>
+            {SERVICE_CATALOG.map((service) => <ServiceSelector service={service} />)}
+            <p id="inventory-status" class="inventory-status">Elige una fecha para consultar el inventario.</p>
+          </section>
+        </div>
+        <aside class="quote-side">
+          <QuoteSummaryTable />
+          <TotalsPanel />
+        </aside>
+      </div>
+    </form>
+  </main>
+  <ModalContainer />
+</BaseLayout>
+
+<script>
+  import '../scripts/quote-app.js';
+
+  const modal = document.querySelector('#app-modal');
+  modal?.querySelector('[data-modal-close]')?.addEventListener('click', () => modal.close());
+
+  const nameInput = document.querySelector('#client-name');
+  nameInput?.addEventListener('beforeinput', (event) => {
+    if (event.data && /[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/u.test(event.data)) {
+      event.preventDefault();
+      modal.querySelector('[data-modal-title]').textContent = 'Nombre inválido';
+      modal.querySelector('[data-modal-body]').textContent = 'El nombre del cliente solo debe contener letras y espacios';
+      modal.showModal();
+    }
+  });
+  nameInput?.addEventListener('input', (event) => {
+    if (/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/u.test(event.target.value)) {
+      event.target.value = event.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/gu, '');
+      modal.querySelector('[data-modal-title]').textContent = 'Nombre inválido';
+      modal.querySelector('[data-modal-body]').textContent = 'El nombre del cliente solo debe contener letras y espacios';
+      modal.showModal();
+    }
+  });
+</script>

@@ -1,0 +1,55 @@
+### Execution Log — Phase 4: Reservas, filtros, edición y pagos
+- **Execution Timestamp**: 2026-11-23 13:30
+- **Files Created**:
+  - `src/components/ModalContainer.astro`
+  - `src/components/icons/IconHome.astro`
+- **Files Modified**:
+  - `src/lib/reservations.js`
+  - `src/lib/reservationsStore.js`
+  - `src/pages/reservas.astro`
+  - `src/pages/nueva-reserva.astro`
+  - `src/pages/pagos.astro`
+  - `src/layouts/BaseLayout.astro`
+  - `tests/reservations.test.js`
+- **New Integrated Functions / Components**:
+  - `updateReservation()`: edición segura de reservas excluyendo el propio folio del inventario.
+  - `recordPayment()`: registro y validación de abonos parciales y liquidación.
+  - `recordPaymentInStorage()`: persiste abonos en el libro local.
+  - `ModalContainer.astro`: modal centrado para alertas, edición, pagos y cancelación.
+- **Error History & Solutions**:
+  - *Error*: La función de edición quedó anidada dentro de `recordDeposit` y provocó un error de sintaxis.
+  - *Solution*: Se movió `updateReservation` fuera de `recordDeposit` y se validó su alcance.
+  - *Error*: El build no encontró `IconHome.astro`.
+  - *Solution*: Se creó el componente SVG y se actualizó el año fijo del pie a 2026.
+- **UX Verification Checkpoint Result**:
+  - Verified against `UX.md` Sections: 2.2, 2.3, 3.2 y 3.3
+  - UX Compliance: PASSED — búsqueda, filtros, estados, botones deshabilitados y modalizaciones quedaron integrados.
+- **Quality Test Results**:
+  - Tests Executed: P1, P5, P6, P7, P8, T2, T3, T4, T6
+  - Minimum Criteria Met: Yes
+- **Phase Evaluation Verdict**: PASSED
+
+### Execution Log — Phase 5: Pagos, ajustes negativos y métricas
+- **Execution Timestamp**: 2026-11-23 13:30
+- **Files Created**:
+  - `src/pages/pagos.astro`
+- **Files Modified**:
+  - `src/lib/reservationsStore.js`
+  - `src/pages/reservas.astro`
+- **New Integrated Functions / Components**:
+  - `loadPayments()` / `savePayments()`: persistencia del libro financiero.
+  - `recordDepositInStorage()`: agrega el anticipo al ledger.
+  - `cancelReservationInStorage()`: agrega ajuste negativo por cancelación cuando existen pagos acumulados.
+  - Payments metrics: calcula ingresos filtrados y stock disponible por fecha.
+- **Error History & Solutions**:
+  - *Error*: No existía una ruta funcional `/pagos`.
+  - *Solution*: Se creó la página con búsqueda, filtro por fecha, tabla de movimientos y tarjetas de métricas.
+  - *Error*: Los ajustes negativos podían duplicarse al cancelar repetidamente.
+  - *Solution*: `cancelReservation` bloquea una reserva ya cancelada.
+- **UX Verification Checkpoint Result**:
+  - Verified against `UX.md` Sections: 2.4 y 3D
+  - UX Compliance: PASSED — métricas, búsqueda, métodos de pago y negativos quedan representados.
+- **Quality Test Results**:
+  - Tests Executed: T4, T6, P-NEG, P-FEC
+  - Minimum Criteria Met: Yes
+- **Phase Evaluation Verdict**: PASSED
