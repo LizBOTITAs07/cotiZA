@@ -11,7 +11,7 @@ const id = Astro.params.id ?? '';
   title="Comprobante | MiEvento"
   description="Comprobante de una reserva almacenada localmente."
 >
-  <main class="receipt-page">
+  <main class="receipt-page" data-reservation-id={id}>
     <header class="receipt-toolbar screen-only">
       <div class="receipt-toolbar-copy">
         <p class="eyebrow">Comprobante guardado</p>
@@ -83,10 +83,12 @@ const id = Astro.params.id ?? '';
   </main>
 </BaseLayout>
 
-<script define:vars={{ reservationId: id }}>
+<script>
   import { loadReservations } from '../../lib/reservationsStore.js';
   import { SERVICE_CATALOG } from '../../lib/catalog.js';
 
+  const mainPage = document.querySelector('.receipt-page');
+  const reservationId = mainPage?.getAttribute('data-reservation-id') ?? '';
   const receipt = document.querySelector('[data-receipt]');
   const receiptError = document.querySelector('[data-receipt-error]');
   const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
@@ -94,32 +96,42 @@ const id = Astro.params.id ?? '';
   const statusLabels = { pendiente: 'Pendiente', confirmada: 'Confirmada', liquidada: 'Liquidada', cancelada: 'Cancelada' };
 
   function showError(text) {
-    receiptError.hidden = false;
-    receiptError.querySelector('[data-error-message]').textContent = text;
+    if (receiptError) {
+      receiptError.hidden = false;
+      const msg = receiptError.querySelector('[data-error-message]');
+      if (msg) msg.textContent = text;
+    }
   }
 
   try {
     const reservation = loadReservations().find((item) => item.id === reservationId);
     if (!reservation) {
       showError('La reserva no existe en el almacenamiento local de este navegador.');
-    } else {
+    } else if (receipt) {
       const dateLabel = (value) => dateFormatter.format(new Date(`${value}T00:00:00Z`));
-      const setText = (selector, value) => { receipt.querySelector(selector).textContent = value; };
-      document.querySelector('[data-receipt-heading]').textContent = `Reserva ${reservation.id.slice(0, 8).toUpperCase()}`;
+      const setText = (selector, value) => {
+        const el = receipt.querySelector(selector);
+        if (el) el.textContent = value;
+      };
+      const heading = document.querySelector('[data-receipt-heading]');
+      if (heading) heading.textContent = `Reserva ${reservation.id.slice(0, 8).toUpperCase()}`;
       setText('[data-folio]', reservation.id.slice(0, 8).toUpperCase());
       setText('[data-created]', `Registrada el ${dateLabel(reservation.creadoEn.slice(0, 10))}`);
       setText('[data-client]', reservation.cliente);
       setText('[data-event-date]', dateLabel(reservation.fecha));
       const status = receipt.querySelector('[data-status]');
-      status.textContent = statusLabels[reservation.estado] ?? reservation.estado;
-      status.dataset.status = reservation.estado;
+      if (status) {
+        status.textContent = statusLabels[reservation.estado] ?? reservation.estado;
+        status.dataset.status = reservation.estado;
+      }
       setText('[data-deposit]', currency.format(reservation.anticipo));
       setText('[data-balance]', currency.format(reservation.saldo));
       setText('[data-subtotal]', currency.format(reservation.subtotal));
       setText('[data-discount]', `−${currency.format(reservation.descuento)}`);
       setText('[data-delivery]', currency.format(reservation.entrega ? 250 : 0));
       setText('[data-total]', currency.format(reservation.total));
-      receipt.querySelector('[data-cancelled-note]').hidden = reservation.estado !== 'cancelada';
+      const cancelledNote = receipt.querySelector('[data-cancelled-note]');
+      if (cancelledNote) cancelledNote.hidden = reservation.estado !== 'cancelada';
 
       const quantities = {
         sillas: reservation.sillas,
@@ -128,23 +140,25 @@ const id = Astro.params.id ?? '';
         entrega: reservation.entrega ? 1 : 0,
       };
       const items = receipt.querySelector('[data-items]');
-      for (const service of SERVICE_CATALOG) {
-        const quantity = quantities[service.id];
-        if (!quantity) {
-          continue;
+      if (items) {
+        for (const service of SERVICE_CATALOG) {
+          const quantity = quantities[service.id];
+          if (!quantity) {
+            continue;
+          }
+          const row = document.createElement('tr');
+          for (const value of [
+            service.concept,
+            String(quantity),
+            currency.format(service.unitPrice),
+            currency.format(service.unitPrice * quantity),
+          ]) {
+            const cell = document.createElement('td');
+            cell.textContent = value;
+            row.append(cell);
+          }
+          items.append(row);
         }
-        const row = document.createElement('tr');
-        for (const value of [
-          service.concept,
-          String(quantity),
-          currency.format(service.unitPrice),
-          currency.format(service.unitPrice * quantity),
-        ]) {
-          const cell = document.createElement('td');
-          cell.textContent = value;
-          row.append(cell);
-        }
-        items.append(row);
       }
       receipt.hidden = false;
     }
@@ -155,7 +169,8 @@ const id = Astro.params.id ?? '';
     showError(error instanceof Error ? error.message : 'No se pudo leer la reserva local.');
   }
 
-  document.querySelector('[data-print]').addEventListener('click', () => window.print());
+  const printButton = document.querySelector('[data-print]');
+  printButton?.addEventListener('click', () => window.print());
 </script>
 
 <style>
